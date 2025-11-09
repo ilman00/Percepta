@@ -3,7 +3,7 @@ name: Deploy to EC2
 on:
   push:
     branches:
-      - frontend   # runs when you push to main branch
+      - main   # runs when you push to main branch
 
 jobs:
   deploy:
@@ -18,10 +18,15 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
+      - name: Add EC2 to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+
       - name: Copy files to EC2
         run: |
           rsync -avz --delete \
-            -e "ssh" \
+            -e "ssh -p ${{ secrets.SSH_PORT }}" \
             ./ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/home/${{ secrets.SSH_USER }}/app
 
       - name: Install dependencies & restart app
