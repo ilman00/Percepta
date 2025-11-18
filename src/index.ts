@@ -1,19 +1,9 @@
 import express, { Request, Response } from "express";
-import dotenv from "dotenv";
-import cors from "cors";
-import cookieParser from "cookie-parser";
+import { app } from "./app"
+import { env } from "./config/env"
+import connectDB from "./config/db"
 
-dotenv.config();
-const app = express();
 
-app.use(cors({ origin: true, credentials: true }));
-app.use(express.json());
-app.use(cookieParser());
-
-// Basic test route
-app.get("/", (req: Request, res: Response) => {
-  res.send("Percepta API is running ✅");
-});
-
-const PORT = process.env.PORT || 5000;
+connectDB()
+const PORT = env.serverPort || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
