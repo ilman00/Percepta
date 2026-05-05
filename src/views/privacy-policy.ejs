@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Privacy Policy — Perceptaa</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    :root {
+      --primary-color: #4f46e5;
+      --accent-color: #818cf8;
+      --bg-gradient: linear-gradient(135deg, #f5f7ff 0%, #ffffff 100%);
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+    }
+
+    body {
+      background: var(--bg-gradient);
+      font-family: 'Inter', sans-serif;
+      color: var(--text-main);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* Scroll Progress Bar */
+    #progress-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 4px;
+      background: var(--primary-color);
+      width: 0%;
+      z-index: 1000;
+      transition: width 0.1s ease;
+    }
+
+    .policy-container {
+      max-width: 900px;
+      margin: 60px auto;
+    }
+
+    .policy-card {
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(10px);
+      border-radius: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.04);
+      padding: 3rem;
+    }
+
+    h1 {
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(90deg, #1e293b, #4f46e5);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.5rem;
+    }
+
+    h2 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--primary-color);
+      margin-top: 2.5rem;
+      margin-bottom: 1.25rem;
+      display: flex;
+      align-items: center;
+    }
+
+    /* Decorative number for headings */
+    h2::before {
+      content: "";
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      background: var(--accent-color);
+      border-radius: 3px;
+      margin-right: 12px;
+      opacity: 0.6;
+    }
+
+    h5 {
+      font-weight: 600;
+      color: #334155;
+      font-size: 1rem;
+      margin-top: 1.5rem;
+    }
+
+    p {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+    }
+
+    .list-group-item {
+      border: none;
+      padding-left: 0;
+      color: var(--text-muted);
+      background: transparent;
+      display: flex;
+      align-items: flex-start;
+    }
+
+    .list-group-item::before {
+      content: "✓";
+      color: var(--primary-color);
+      font-weight: bold;
+      margin-right: 12px;
+    }
+
+    .contact-box {
+      background: #f8fafc;
+      border-radius: 16px;
+      padding: 2rem;
+      border: 1px solid #e2e8f0;
+      margin-top: 3rem;
+    }
+
+    .header-divider {
+      height: 4px;
+      width: 40px;
+      background: var(--primary-color);
+      border-radius: 10px;
+      margin: 1.5rem auto;
+    }
+
+    @media (max-width: 768px) {
+      .policy-card {
+        padding: 1.5rem;
+        margin: 20px;
+      }
+
+      h1 {
+        font-size: 2rem;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="progress-bar"></div>
+
+  <div class="container policy-container">
+    <div class="policy-card">
+
+      <div class="text-center mb-5">
+        <h1>Privacy Policy</h1>
+        <div class="header-divider"></div>
+        <p class="small text-uppercase tracking-widest fw-bold text-primary">
+          Last updated: <%= lastUpdated || "February 2026" %>
+        </p>
+      </div>
+
+      <p class="lead text-center mb-5">
+        Thank you for choosing <strong>Perceptaa</strong>. We are committed to protecting your personal information and
+        your right to privacy.
+      </p>
+
+      <hr class="my-5 opacity-10">
+
+      <h2>1. Information We Collect</h2>
+
+      <h5>Personal Information</h5>
+      <div class="list-group">
+        <div class="list-group-item">Name and email address</div>
+        <div class="list-group-item">Account login credentials</div>
+        <div class="list-group-item">Communications you send to us directly</div>
+      </div>
+
+      <h2>2. How We Use Your Information</h2>
+      <p>We process your information for purposes based on legitimate business interests, the fulfillment of our
+        contract with you, and compliance with our legal obligations.</p>
+      <div class="list-group">
+        <div class="list-group-item">To facilitate account creation and logon process.</div>
+        <div class="list-group-item">To send administrative information to you.</div>
+        <div class="list-group-item">To protect our services from fraud or security threats.</div>
+        <div class="list-group-item">To improve our algorithms and user interface.</div>
+      </div>
+
+      <h2>3. Sharing Your Information</h2>
+      <p><strong>Perceptaa does not sell your personal data to third parties.</strong> We only share information with
+        your consent, to comply with laws, or to provide you with services (e.g., cloud hosting).</p>
+
+      <h2>4. Data Storage & Security</h2>
+      <p>
+        We implement appropriate technical and organizational security measures designed to protect the security of any
+        personal information we process. However, please remember that the internet itself is not 100% secure.
+      </p>
+
+      <h2>5. Your Privacy Rights</h2>
+      <p>Depending on your location, you may have the right to:</p>
+      <div class="list-group mb-4">
+        <div class="list-group-item">Request access and obtain a copy of your personal information.</div>
+        <div class="list-group-item">Request rectification or erasure of your data.</div>
+        <div class="list-group-item">Object to the processing of your personal information.</div>
+      </div>
+
+      <div class="contact-box">
+        <h2 class="mt-0">10. Contact Us</h2>
+        <p class="mb-1">If you have questions or comments about this policy, you may contact us at:</p>
+        <p class="mb-4 text-dark font-monospace"><strong>
+            <%= contactEmail || "muhammadshadabkhan67@gmail.com" %>
+          </strong></p>
+
+        <div class="pt-3 border-top">
+          <small class="text-muted d-block">Company</small>
+          <strong>
+            <%= companyName || "Perceptaa" %>
+          </strong><br>
+          <small class="text-muted d-block mt-2">Legal Address</small>
+          <span>
+            <%= address || "Islamabad, Pakistan" %>
+          </span>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="text-center mt-4">
+      <p class="small text-muted">&copy; 2026 Perceptaa. All rights reserved.</p>
+    </div>
+  </div>
+
+  <script>
+    // Simple scroll progress script
+    window.onscroll = function () {
+      let winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+      let height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+      let scrolled = (winScroll / height) * 100;
+      document.getElementById("progress-bar").style.width = scrolled + "%";
+    };
+  </script>
+
+</body>
+
+</html>
