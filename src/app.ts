@@ -23,10 +23,9 @@ app.use(express.urlencoded({ extended: true }));
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-app.use(
-  "/uploads",
-  express.static(path.join(__dirname, "uploads"))
-);
+const uploadDir = process.env.FILE_UPLOAD_PATH || path.join(process.cwd(), "data", "uploads");
+
+app.use("/uploads", express.static(uploadDir));
 
 app.use("/api/auth", authRoutes)
 app.use("/api", createCustomer)

@@ -3,7 +3,6 @@ import { AuthRequest } from "../middlewares/authMiddleware";
 import { Transaction } from "../models/transactions";
 import { Customer } from "../models/Customers";
 import { User } from "../models/Users";
-import { getSignedUrlForFile } from "../config/s3";
 
 
 export const getCustomerRunningAccount = async (
@@ -25,15 +24,17 @@ export const getCustomerRunningAccount = async (
     const currency = currencyParam;
 
     if (!customerId) {
-      return res
-        .status(400)
-        .json({ status: 400, message: "Customer ID is required." });
+      return res.status(400).json({
+        status: 400,
+        message: "Customer ID is required.",
+      });
     }
 
     if (!currency || !["PKR", "AED"].includes(currency)) {
-      return res
-        .status(400)
-        .json({ status: 400, message: "Currency must be PKR or AED" });
+      return res.status(400).json({
+        status: 400,
+        message: "Currency must be PKR or AED",
+      });
     }
 
     const transactionType =
@@ -48,26 +49,23 @@ export const getCustomerRunningAccount = async (
       .populate("customer", "name")
       .sort({ serial_no: -1 });
 
-    // 🔑 Attach signed URLs
-    const data = await Promise.all(
-      transactions.map(async (tx) => {
-        const obj = tx.toObject();
+    /* =============================
+       ATTACH FILE URLS (LOCAL)
+    ============================= */
 
-        let receipt_image_url = null;
+    const baseUrl =
+      process.env.BASE_URL || `${req.protocol}://${req.get("host")}`;
 
-        if (obj.receipt_image) {
-          receipt_image_url = await getSignedUrlForFile(
-            obj.receipt_image,
-            60 * 10 // 10 minutes
-          );
-        }
+    const data = transactions.map((tx: any) => {
+      const obj = tx.toObject();
 
-        return {
-          ...obj,
-          receipt_image_url, // 👈 frontend will use this
-        };
-      })
-    );
+      return {
+        ...obj,
+        receipt_image_url: obj.receipt_image
+          ? `${baseUrl}/uploads/${obj.receipt_image}`
+          : null,
+      };
+    });
 
     return res.status(200).json({
       status: 200,
@@ -75,42 +73,49 @@ export const getCustomerRunningAccount = async (
     });
   } catch (error) {
     console.error("Get running account error:", error);
-    return res
-      .status(500)
-      .json({ status: 500, message: "Internal server error." });
+    return res.status(500).json({
+      status: 500,
+      message: "Internal server error.",
+    });
   }
 };
+
+
 
 export const searchTransactions = async (req: AuthRequest, res: Response) => {
   try {
     const { customerName, employeeName, serial_no } = req.query;
 
-    // 🚫 Always exclude deleted transactions
     const filter: any = {
       status: "active",
     };
 
-    // 🔢 Serial number filter
     if (serial_no) {
       filter.serial_no = Number(serial_no);
     }
+    
+    /* =============================
+       CUSTOMER FILTER
+    ============================= */
 
-    // 👤 Customer name filter
     if (customerName) {
       const customers = await Customer.find({
         name: { $regex: customerName, $options: "i" },
       }).select("_id");
 
-      filter.customer = { $in: customers.map(c => c._id) };
+      filter.customer = { $in: customers.map((c) => c._id) };
     }
 
-    // 🧑 Employee name filter
+    /* =============================
+       EMPLOYEE FILTER
+    ============================= */
+
     if (employeeName) {
       const employees = await User.find({
         name: { $regex: employeeName, $options: "i" },
       }).select("_id");
 
-      filter.employee = { $in: employees.map(e => e._id) };
+      filter.employee = { $in: employees.map((e) => e._id) };
     }
 
     const transactions = await Transaction.find(filter)
@@ -118,27 +123,23 @@ export const searchTransactions = async (req: AuthRequest, res: Response) => {
       .populate("employee", "name")
       .sort({ created_at: -1 });
 
-    // 🔑 Attach signed URLs for receipt images
-    const data = await Promise.all(
-      transactions.map(async (tx) => {
-        const obj = tx.toObject();
+    /* =============================
+       ATTACH FILE URLS (LOCAL)
+    ============================= */
 
-        let receipt_image_url = null;
+    const baseUrl =
+      process.env.BASE_URL || `${req.protocol}://${req.get("host")}`;
 
-        if (obj.receipt_image) {
-          receipt_image_url = await getSignedUrlForFile(
-            obj.receipt_image,
-            60 * 10 // 10 minutes
-          );
-        }
+    const data = transactions.map((tx: any) => {
+      const obj = tx.toObject();
 
-
-        return {
-          ...obj,
-          receipt_image_url,
-        };
-      })
-    );
+      return {
+        ...obj,
+        receipt_image_url: obj.receipt_image
+          ? `${baseUrl}/uploads/${obj.receipt_image}`
+          : null,
+      };
+    });
 
     return res.status(200).json({
       status: 200,

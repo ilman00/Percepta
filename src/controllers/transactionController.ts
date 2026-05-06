@@ -3,9 +3,15 @@ import { Transaction } from "../models/transactions";
 import { AuthRequest } from "../middlewares/authMiddleware";
 import { User } from "../models/Users";
 import { sendPushNotificationToMany } from "../service/notification.service";
+import fs from "fs";
+import path from "path";
+import { uploadPath } from "../config/stoage";
+
 
 
 export const createTransaction = async (req: Request, res: Response) => {
+  let uploadedFilePath: string | null = null;
+
   try {
     const customerId = req.params.customerId;
     const employeeId = (req as any).user.userId;
@@ -20,11 +26,25 @@ export const createTransaction = async (req: Request, res: Response) => {
       description,
     } = req.body;
 
-    const file = req.file as Express.MulterS3.File | undefined;
-    const receipt_image = file ? file.key : undefined;
+    const employee = await User.findById(employeeId).select("name");
+    const employeeName = employee?.name || "Unknown";
 
     /* =============================
-       VALIDATION
+      FILE HANDLING
+    ============================= */
+
+    const file = req.file as Express.Multer.File | undefined;
+
+    if (file) {
+      uploadedFilePath = path.join(uploadPath, file.filename);
+    }
+
+    console.log("Received file:", file ? file.filename : "No file uploaded");
+
+    const receipt_image = file ? file.filename : undefined;
+
+    /* =============================
+      VALIDATION
     ============================= */
 
     const validTypes = ["PKR_RUNNING", "AED_RUNNING"];
@@ -33,22 +53,20 @@ export const createTransaction = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Invalid transaction type" });
     }
 
-    if (transaction_type === "PKR_RUNNING" || transaction_type === "AED_RUNNING") {
-      if (!direction)
-        return res.status(400).json({ error: "Direction is required" });
+    if (!direction) {
+      return res.status(400).json({ error: "Direction is required" });
+    }
 
-      if (!currency)
-        return res.status(400).json({ error: "Currency is required" });
+    if (!currency || !["PKR", "AED"].includes(currency)) {
+      return res.status(400).json({ error: "Invalid currency" });
+    }
 
-      if (!["PKR", "AED"].includes(currency))
-        return res.status(400).json({ error: "Invalid currency" });
-
-      if (!amount_pkr && !amount_aed)
-        return res.status(400).json({ error: "Amount is required" });
+    if (!amount_pkr && !amount_aed) {
+      return res.status(400).json({ error: "Amount is required" });
     }
 
     /* =============================
-       CREATE TRANSACTION
+      CREATE TRANSACTION
     ============================= */
 
     const transaction = await Transaction.create({
@@ -65,26 +83,36 @@ export const createTransaction = async (req: Request, res: Response) => {
     });
 
     /* =============================
-       BACKGROUND NOTIFICATION
+      BACKGROUND NOTIFICATION
     ============================= */
+
+    let directionText = "";
+
+    if (direction === "to_company") {
+      directionText = "Recieved";
+    } else if (direction === "to_customer") {
+      directionText = "Send";
+    }
+
 
     (async () => {
       try {
         const users = await User.find({
           status: "active",
           fcmTokens: { $exists: true, $ne: [] },
-        }).select("fcmTokens name");
+        }).select("fcmTokens");
 
         const tokens = users.flatMap((u) => u.fcmTokens || []);
 
         if (!tokens.length) return;
-
+        console.log( "Employee:", employeeName, "Direction:", directionText, "Transaction Type:", transaction_type, "currency:", currency, "amount_pkr:", amount_pkr, "amount_aed:", amount_aed);
         const amount =
-          currency === "PKR" ? `${amount_pkr} PKR` : `${amount_aed} AED`;
+          currency === "PKR"
+            ? `${amount_pkr || 0} PKR`
+            : `${amount_aed || 0} AED`;
 
         const title = "New Customer Transaction";
-
-        const body = `${direction} ${amount} (${transaction_type})`;
+        const body = `${employeeName} ${directionText} ${amount} (${transaction_type})`;
 
         await sendPushNotificationToMany(tokens, title, body);
       } catch (error) {
@@ -93,24 +121,50 @@ export const createTransaction = async (req: Request, res: Response) => {
     })();
 
     /* =============================
-       RESPONSE
+      RESPONSE
     ============================= */
 
-    res.status(201).json({
+    const baseUrl =
+      process.env.BASE_URL || `${req.protocol}://${req.get("host")}`;
+
+    const transactionWithUrl = {
+      ...transaction.toObject(),
+      receipt_image: receipt_image
+        ? `${baseUrl}/uploads/${receipt_image}`
+        : null,
+    };
+
+    return res.status(201).json({
       message: "Transaction created successfully",
-      transaction,
+      transaction: transactionWithUrl,
     });
   } catch (error) {
     console.error("Create Transaction Error:", error);
 
-    res.status(500).json({
+    /* =============================
+      CLEANUP (VERY IMPORTANT)
+    ============================= */
+
+    if (uploadedFilePath && fs.existsSync(uploadedFilePath)) {
+      try {
+        fs.unlinkSync(uploadedFilePath);
+        console.log("Cleaned up uploaded file after failure");
+      } catch (cleanupError) {
+        console.error("File cleanup error:", cleanupError);
+      }
+    }
+
+    return res.status(500).json({
       error: "Server error",
     });
   }
 };
 
 
+
 export const updateTransaction = async (req: Request, res: Response) => {
+  let newUploadedFilePath: string | null = null;
+
   try {
     const { transactionId } = req.params;
 
@@ -122,20 +176,39 @@ export const updateTransaction = async (req: Request, res: Response) => {
       description,
     } = req.body;
 
-    // 📸 Handle optional receipt image
-    const file = req.file as Express.MulterS3.File | undefined;
-    const receipt_image = file ? file.key : undefined;
+    /* =============================
+       FILE HANDLING
+    ============================= */
+
+    const file = req.file as Express.Multer.File | undefined;
+    const newReceiptImage = file ? file.filename : undefined;
+
+    if (file) {
+      newUploadedFilePath = path.join(uploadPath, file.filename);
+    }
+
+    /* =============================
+       FIND TRANSACTION
+    ============================= */
 
     const transaction = await Transaction.findById(transactionId);
 
     if (!transaction) {
+      // cleanup newly uploaded file if transaction not found
+      if (newUploadedFilePath && fs.existsSync(newUploadedFilePath)) {
+        fs.unlinkSync(newUploadedFilePath);
+      }
+
       return res.status(404).json({
         status: 404,
         error: "Transaction not found",
       });
     }
 
-    // 🚫 Only running transactions are editable
+    /* =============================
+       VALIDATION
+    ============================= */
+
     if (
       transaction.transaction_type !== "PKR_RUNNING" &&
       transaction.transaction_type !== "AED_RUNNING"
@@ -146,7 +219,6 @@ export const updateTransaction = async (req: Request, res: Response) => {
       });
     }
 
-    // 🔁 Validate direction
     if (direction && !["to_company", "to_customer"].includes(direction)) {
       return res.status(400).json({
         status: 400,
@@ -154,7 +226,6 @@ export const updateTransaction = async (req: Request, res: Response) => {
       });
     }
 
-    // 💱 Validate currency
     if (currency && !["PKR", "AED"].includes(currency)) {
       return res.status(400).json({
         status: 400,
@@ -162,7 +233,6 @@ export const updateTransaction = async (req: Request, res: Response) => {
       });
     }
 
-    // 💸 Currency ↔ amount consistency
     if (currency === "PKR" && amount_pkr === undefined) {
       return res.status(400).json({
         status: 400,
@@ -177,31 +247,83 @@ export const updateTransaction = async (req: Request, res: Response) => {
       });
     }
 
-    // 🧠 Apply updates safely
+    /* =============================
+       APPLY UPDATES
+    ============================= */
+
     if (currency !== undefined) transaction.currency = currency;
     if (direction !== undefined) transaction.direction = direction;
     if (amount_pkr !== undefined) transaction.amount_pkr = amount_pkr;
     if (amount_aed !== undefined) transaction.amount_aed = amount_aed;
     if (description !== undefined) transaction.description = description;
 
-    // 📸 Update receipt image only if new one is uploaded
-    if (receipt_image) {
-      transaction.receipt_image = receipt_image;
+    /* =============================
+       FILE REPLACEMENT (CRITICAL)
+    ============================= */
 
-      // (Optional) TODO:
-      // delete old image from filesystem here if needed
+    if (newReceiptImage) {
+      const oldFileName = transaction.receipt_image;
+
+      // assign new file
+      transaction.receipt_image = newReceiptImage;
+
+      // delete old file safely
+      if (oldFileName) {
+        const oldFilePath = path.join(uploadPath, oldFileName);
+
+        if (fs.existsSync(oldFilePath)) {
+          try {
+            fs.unlinkSync(oldFilePath);
+            console.log("Old file deleted:", oldFileName);
+          } catch (err) {
+            console.error("Error deleting old file:", err);
+          }
+        }
+      }
     }
+
+    /* =============================
+       SAVE
+    ============================= */
 
     await transaction.save();
 
-    res.status(200).json({
+    /* =============================
+       RESPONSE
+    ============================= */
+
+    const baseUrl =
+      process.env.BASE_URL || `${req.protocol}://${req.get("host")}`;
+
+    const transactionWithUrl = {
+      ...transaction.toObject(),
+      receipt_image: transaction.receipt_image
+        ? `${baseUrl}/uploads/${transaction.receipt_image}`
+        : null,
+    };
+
+    return res.status(200).json({
       status: 200,
       message: "Transaction updated successfully",
-      transaction,
+      transaction: transactionWithUrl,
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({
+    console.error("Update Transaction Error:", error);
+
+    /* =============================
+       CLEANUP NEW FILE ON FAILURE
+    ============================= */
+
+    if (newUploadedFilePath && fs.existsSync(newUploadedFilePath)) {
+      try {
+        fs.unlinkSync(newUploadedFilePath);
+        console.log("Cleaned up new uploaded file after failure");
+      } catch (cleanupError) {
+        console.error("Cleanup error:", cleanupError);
+      }
+    }
+
+    return res.status(500).json({
       status: 500,
       error: "Server error",
     });
