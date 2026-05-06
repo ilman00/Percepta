@@ -1,9 +1,10 @@
 import admin from "firebase-admin";
+import serviceAccountJson from "./serviceAccountKey.json";
 
-const serviceAccount = {
-  projectId: process.env.FIREBASE_PROJECT_ID,
-  privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
-  clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+const serviceAccount: admin.ServiceAccount = {
+  projectId: serviceAccountJson.project_id,
+  clientEmail: serviceAccountJson.client_email,
+  privateKey: serviceAccountJson.private_key,
 };
 
 admin.initializeApp({

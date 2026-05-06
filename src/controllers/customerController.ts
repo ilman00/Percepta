@@ -59,7 +59,16 @@ export const createCustomer = async (req: AuthRequest, res: Response) => {
 
 export const getCustomers = async (req: Request, res: Response) => {
   try {
-    const { currency_type } = req.params;
+    const currencyParam = req.params.currency_type;
+
+    if (Array.isArray(currencyParam)) {
+      return res.status(400).json({
+        status: 400,
+        message: "Invalid currency type.",
+      });
+    }
+
+    const currency_type = currencyParam;
     const search = (req.query.search as string)?.trim();
 
     const page = Math.max(parseInt(req.query.page as string) || 1, 1);

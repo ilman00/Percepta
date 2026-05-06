@@ -11,7 +11,18 @@ export const getCustomerRunningAccount = async (
   res: Response
 ) => {
   try {
-    const { customerId, currency } = req.params;
+    const customerParam = req.params.customerId;
+    const currencyParam = req.params.currency;
+
+    if (Array.isArray(customerParam) || Array.isArray(currencyParam)) {
+      return res.status(400).json({
+        status: 400,
+        message: "Invalid parameters",
+      });
+    }
+
+    const customerId = customerParam;
+    const currency = currencyParam;
 
     if (!customerId) {
       return res
@@ -120,7 +131,7 @@ export const searchTransactions = async (req: AuthRequest, res: Response) => {
             60 * 10 // 10 minutes
           );
         }
-        
+
 
         return {
           ...obj,
